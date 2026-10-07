@@ -9,10 +9,21 @@ RUN apt-get update && apt-get -y upgrade && \
 	python3-jinja2 python3-numpy python3-pandas python3-pip python3-scipy \
 	python3-six python3-yaml readline-common rsyslog ruby sensible-utils \
 	ssh systemd systemd-sysv tasksel tasksel-data udev vim wget whiptail \
-	xxd iptables isc-dhcp-client isc-dhcp-common kmod less netcat-openbsd
+	xxd iptables isc-dhcp-client isc-dhcp-common kmod less netcat-openbsd sudo httping
 
 # Make a user, then copy over the /example directory
 RUN useradd -m user && echo "user:password" | chpasswd
+
+# sudo for the default user, plus an HTTP-based ping (ICMP is not available in WebVM)
+RUN echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/user && chmod 0440 /etc/sudoers.d/user
+RUN echo "alias ping='httping -h'" >> /etc/bash.bashrc
+
+# yazi has no i386 binaries, so build it with a current Rust toolchain, then remove the toolchain
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-host i686-unknown-linux-gnu && \
+	. /root/.cargo/env && \
+	cargo install --locked yazi-build && \
+	cp /root/.cargo/bin/yazi /root/.cargo/bin/ya /usr/local/bin/ && \
+	rm -rf /root/.cargo /root/.rustup
 COPY --chown=user:user ./examples /home/user/examples
 RUN chmod -R +x  /home/user/examples/lua
 # We set WORKDIR, as this gets extracted by Webvm to be used as the cwd. This is optional.
