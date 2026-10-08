@@ -188,7 +188,9 @@
 		const { Terminal } = await import('@xterm/xterm');
 		const { FitAddon } = await import('@xterm/addon-fit');
 		const { WebLinksAddon } = await import('@xterm/addon-web-links');
-		term = new Terminal({cursorBlink:true, convertEol:true, fontFamily:"monospace", fontWeight: 400, fontWeightBold: 700, fontSize: computeXTermFontSize()});
+		// Make sure the Nerd Font symbols are ready before xterm measures the character cells
+		try { await document.fonts.load('1em "Symbols Nerd Font"', '\ue5ff'); } catch (e) {}
+		term = new Terminal({cursorBlink:true, convertEol:true, fontFamily:"monospace, 'Symbols Nerd Font'", fontWeight: 400, fontWeightBold: 700, fontSize: computeXTermFontSize()});
 		fitAddon = new FitAddon();
 		term.loadAddon(fitAddon);
 		var linkAddon = new WebLinksAddon();

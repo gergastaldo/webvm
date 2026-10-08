@@ -1,11 +1,5 @@
-FROM --platform=linux/386 docker.io/i386/debian:buster
+FROM --platform=linux/386 docker.io/i386/debian:bookworm
 ARG DEBIAN_FRONTEND=noninteractive
-
-# Point APT to the archived mirrors (Buster is EOL)
-RUN echo "deb [trusted=yes] http://archive.debian.org/debian buster main contrib non-free" \
-  > /etc/apt/sources.list && \
-	echo "deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main" \
-	>> /etc/apt/sources.list
 
 RUN apt-get clean && apt-get update && apt-get -y upgrade
 RUN apt-get -y install apt-utils gcc \
@@ -13,8 +7,20 @@ RUN apt-get -y install apt-utils gcc \
 	fakeroot dbus base whiptail hexedit \
 	patch wamerican ucf manpages \
 	file luajit make lua5.3 dialog curl \
-	less cowsay netcat-openbsd
+	less cowsay netcat-openbsd \
+	sudo wget httping ca-certificates
 RUN useradd -m user && echo "user:password" | chpasswd
+
+# sudo for the default user, plus an HTTP-based ping (ICMP is not available in WebVM)
+RUN echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/user && chmod 0440 /etc/sudoers.d/user
+RUN echo "alias ping='httping -h'" >> /etc/bash.bashrc
+
+# yazi has no i386 binaries, so build it with a current Rust toolchain, then remove the toolchain
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-host i686-unknown-linux-gnu && \
+	. /root/.cargo/env && \
+	cargo install --locked yazi-build && \
+	cp /root/.cargo/bin/yazi /root/.cargo/bin/ya /usr/local/bin/ && \
+	rm -rf /root/.cargo /root/.rustup
 COPY --chown=user:user ./examples /home/user/examples
 RUN chmod -R +x  /home/user/examples/lua
 # We set WORKDIR, as this gets extracted by Webvm to be used as the cwd. This is optional.
